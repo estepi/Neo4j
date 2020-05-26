@@ -135,8 +135,15 @@ Here is a query that returns the number of citations that each article has, and 
 
 ```{r details, echo = TRUE, message=FALSE, warning=FALSE}
 numbers<-as.data.frame('MATCH (a:Article) RETURN size((a)<-[:CITED]-()) AS citations' %>%   call_neo4j(con))
-summary(numbers$value)
-hist(numbers$value)
+
+print(summary(numbers$value))
+
+nn<-as.data.frame(table(numbers$value))
+ggplot(nn, aes(x = Var1, y = Freq)) +
+  geom_bar(stat = "identity")+
+  ggtitle("Article's citation")
+
+
 ```
 
 ## Exercise instructions
@@ -146,9 +153,26 @@ Note that you'll only need to do a slight tweak of the Cypher query to do this.
 slight tweak of the Cypher : (deberia ser la direccion de la flechaS)
 ```{r details2, echo = TRUE, message=FALSE, warning=FALSE}
 numbers<-as.data.frame('MATCH (a:Article) RETURN size((a)-[:CITED]->()) AS citations' %>%   call_neo4j(con))
-summary(numbers$value)
-hist(numbers$value)
+
+print(summary(numbers$value))
+
+cc<-as.data.frame(table(numbers$value))
+ggplot(cc, aes(x = Var1, y = Freq)) +
+  geom_bar(stat = "identity")+
+  ggtitle("Article's cites")
+
+
 ```
 
 * What about a distribution of the number of articles published by authors?
 
+```{r published, echo = TRUE, message=FALSE, warning=FALSE}
+published<-as.data.frame('MATCH (a:Author) RETURN size((a)<-[:AUTHOR]-()) AS publications' %>%   call_neo4j(con))
+
+print(summary(published$value))
+
+pp<-as.data.frame(table(published$value))
+ggplot(pp, aes(x = Var1, y = Freq)) +
+  geom_bar(stat = "identity")+
+  ggtitle("Author's publications")
+```
