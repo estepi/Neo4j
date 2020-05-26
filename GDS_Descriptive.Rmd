@@ -1,0 +1,154 @@
+---
+title: "Data Science with Neo4j"
+author: "Estefania Mancini"
+date: "5/25/2020"
+output:
+  html_document:
+    code_folding: hide
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 6
+    number_sections: yes
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+# Data Science with Neo4j
+  
+This course introduces you to using Neo4j as part of your Data Science and Machine Learning workflows. We’re going to learn how to do this with the help of the aminer.org citation dataset. This dataset contains papers, authors, and citations from DBLP – a computer science bibliography website. This course is intended for data scientists and data analysts. This self-paced training should take you three hours to complete if you perform all of the hands-on exercises in the course.
+
+We have set up a discussion area in our Neo4j Community Site, if you run into problems in the course and need assistance. You should register on the community site where you can view other questions and answers for students taking our online training courses. The Neo4j Community Site is an excellent resource for answering many types of questions posed by other users of Neo4j.
+
+There are four modules in this course. Most modules have hands-on exercises you should complete and all modules have a set of review questions at the end. The hands-on exercises in this course can be completed in a Neo4j Sandbox or in Neo4j Desktop. We have provided an estimate of how long each module should take you to complete if you perform the hands-on exercises.  
+
+## Setting Up Your Development Environment
+To configure this citation database, I followed this forum:
+ < https://community.neo4j.com/t/download-datasets/11723/6 >
+ 
+I replicate my local neo4j folder, and started a second neo4j machine to avoid messy. Then I follow this instructions:
+
+* Here is the Citations dataset:
+https://s3.amazonaws.com/neo4j-sandbox-usecase-datastores/v3_4/citations.db.zi
+* Unzip the database zip file.
+* Start the database.
+* Stop the database.
+* Copy the folder where you unzipped the database to the databases folder.
+* (Delete the graph.db folder)
+* Rename the to graph.db.
+* Start the database.
+
+Once it is up, you can connect using http://localhost:7474/browser/
+
+## Import data using R:
+I use this package: https://github.com/neo4j-rstats/neo4r
+
+```{r Load, echo = TRUE}
+library(neo4r)
+con <- neo4j_api$new(
+  url = "http://localhost:7474", 
+  user = "neo4j", 
+  password = ""
+)
+```
+
+
+## Check connection and some specificities
+
+```{r check1, echo = TRUE}
+con$ping()
+con$get_version()
+con$get_constraints()
+con$get_labels()
+con$get_relationships()
+con$get_index()
+```
+
+## Label analysis: How many nodes do we have for each of these labels?
+
+```{r loop, echo = TRUE, message=FALSE, warning=FALSE}
+ll<- 'CALL db.labels()' %>% call_neo4j(con)
+ul<-unlist(ll)
+labResult<-data.frame(matrix(ncol=2, nrow = length(ul)))
+colnames(labResult)<-c("label", "count")
+for (i in 1:length(ul))
+{
+  label<- ul[i]
+  query<- paste("MATCH (n:", label , ") RETURN count(n) as count")
+  val <- query  %>%   call_neo4j(con)
+  val$count
+  labResult$count[i]<-as.numeric(val$count)
+  labResult$label[i]<-label
+}
+labResult
+ggplot(labResult, aes(x = reorder(label, count), y = count)) +
+  geom_bar(stat = "identity")+
+  ggtitle("Node Cardinalities")
+```
+
+## Types of relationships: What types of relationships do we have in our graph?
+
+```{r barplot, echo = TRUE, message=FALSE, warning=FALSE}
+rr<-'CALL db.relationshipTypes()' %>% call_neo4j(con)
+rul<-unlist(rr)
+relResult<-data.frame(matrix(ncol=2, nrow = length(rul)))
+colnames(relResult)<-c("relType", "count")
+
+for (i in 1:length(rul))
+{
+  relType<- rul[i]
+  query<- paste(" MATCH ()-[r:", relType , "]->() RETURN count(r) as count")
+  rels <- query  %>%   call_neo4j(con)
+  relResult$count[i]<-as.numeric(rels$count)
+  relResult$relType[i]<-relType
+}
+relResult
+ggplot(relResult, aes(x = reorder(relType, count), y = count)) +
+  geom_bar(stat = "identity")+
+  ggtitle("Relationship Cardinalities")
+```
+
+## Explore the citation data. 
+The following query finds 25 authors, articles, venues, and also shows the number of articles that article has cited, as well as the number of articles that it's been cited by
+
+
+```{r explore, echo = TRUE, message=FALSE, warning=FALSE}
+
+dd<-as.data.frame(
+'MATCH (author:Author)<-[:AUTHOR]-(article:Article)-[:VENUE]->(venue)
+RETURN article.title AS article, 
+author.name AS author, 
+venue.name AS venue, 
+size((article)-[:CITED]->()) AS citationsGiven,
+size((article)<-[:CITED]-()) AS citationsReceived 
+ORDER BY rand() LIMIT 25'  %>%   call_neo4j(con))
+colnames(dd)<-c("title","author",
+                "articles","citationsGiven","citationsReceived")
+knitr::kable(dd[1:5,], format="pandoc")
+```
+
+## Citation data more closely. 
+Here is a query that returns the number of citations that each article has, and then creates a distribution of those counts using pandas describe function.
+
+```{r details, echo = TRUE, message=FALSE, warning=FALSE}
+numbers<-as.data.frame('MATCH (a:Article) RETURN size((a)<-[:CITED]-()) AS citations' %>%   call_neo4j(con))
+summary(numbers$value)
+hist(numbers$value)
+```
+
+## Exercise instructions
+* Create a similar query showing the articles that cite the most other papers? 
+Note that you'll only need to do a slight tweak of the Cypher query to do this.
+
+slight tweak of the Cypher : (deberia ser la direccion de la flechaS)
+```{r details2, echo = TRUE, message=FALSE, warning=FALSE}
+numbers<-as.data.frame('MATCH (a:Article) RETURN size((a)-[:CITED]->()) AS citations' %>%   call_neo4j(con))
+summary(numbers$value)
+hist(numbers$value)
+```
+
+* What about a distribution of the number of articles published by authors?
+
