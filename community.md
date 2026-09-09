@@ -21,7 +21,7 @@ Descomentar esta linea
 dbms.security.procedures.whitelist=apoc.coll.*,apoc.load.*
 
 4. Importar los datos con el script de importacion
-bash run.sh /home/estepi/Documents/website/neo4j-community-3.5.17/bin/cypher-shell neo4j/data/classification_final.csv neo4j/data/types /home/estepi/Documents/website/labvalcarcel-spliceosome-master/neo4j/data/Source_Event_Targe
+bash run.sh /home/estepi/Documents/website/neo4j-community-3.5.17/bin/cypher-shell neo4j/data/classification_final.csv neo4j/data/typesneo4j/data/Source_Event_Targe
 
 
 
